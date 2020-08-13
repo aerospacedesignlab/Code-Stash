@@ -6,7 +6,7 @@ Only plots Density residual against iteration
 Author: Jayant Mukhopadhaya
 Last updated: 08/12/2020"""
 
-from su2_io.file_read_util import *
+from io_su2.file_read_util import *
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt

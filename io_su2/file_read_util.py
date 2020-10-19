@@ -1,33 +1,170 @@
 import numpy as np
 import os
 
-def get_mesh_data(filename = 'mesh.su2', var = 'NELEM'):
+def read_last_line(f):
+    """Returns last line of file.
+    
+    Keyword arguments:
+    f -- file object
+
+    Return value:
+    last -- string representing the last line in the file
+    
+    Author: https://stackoverflow.com/questions/3346430/what-is-the-most-efficient-way-to-get-first-and-last-line-of-a-text-file/3346788
+    Last updated: 09/08/2020"""
+    
+    f.seek(-2, 2)              # Jump to the second last byte.
+    while f.read(1) != b"\n":  # Until EOL is found ...
+        f.seek(-2, 1)          # ... jump back, over the read byte plus one more.
+    return f.read().decode('utf-8')            # Read all data from this point on.
+    
+def get_final_vals(filename = "history.csv"):
+    """Returns last value of variables defined in the file
+    
+    Keyword arguments:
+    filename -- Name of file from which variables and their last value needs to be extracted
+
+    Return value:
+    data_dict -- Dictionary where keys are variables names and values are their final values.
+    
+    Author: Jayant Mukhopadhaya
+    Last updated: 09/08/2020"""
+    
+    file_name, file_extension = os.path.splitext(filename)
+    
+    # if tecplot file, use tecplot reader
+    if file_extension == ".dat":
+        with open(filename, "r") as f:
+            line = f.readline()
+            while line:
+                if "variable" in line.lower():
+                    line = line.split('=',1)[1]
+                    if '\\' in line:
+                        line = f.readline()
+                        variables = [ var.strip().strip("\"") for var in line.split(",")]
+                    else:
+                        variables = [ var.strip().strip("\"") for var in line.split(",")]
+                    break
+        with open(filename,"rb") as f:
+            vals = read_last_line(f)
+            
+        if ',' in vals:
+            vals= [val.strip() for val in vals.split(',')]
+        else:
+            vals = vals.split()
+    
+    # if csv file, use csv reader
+    elif file_extension == ".csv":
+        with open(filename,"r") as fp:
+            line = fp.readline()
+            # Check for comments
+            if '#' in line:
+                line_parts = line.split('#')
+                if not line_parts[0]:
+                    line = fp.readline()
+            # Read variable list
+            else:
+                variables = [i.strip().strip('\""') for i in line.split(",")]
+        
+        with open(filename,"rb") as f:
+            vals = read_last_line(f)
+        vals= [val.strip() for val in vals.split(',')]
+    
+    # invalid file extension
+    else:
+        print("This function can only read tabular tecplot or csv data")
+        return 0
+    
+    data_dict = {}
+    for i,var in enumerate(variables):
+        data_dict[var] = float(vals[i])
+    
+    return data_dict     
+    
+def get_mesh_data(filename = 'mesh.su2', var = ''):
     """Goes through mesh file and can extract NELEM or NPOIN based on input var.
     
     Keyword arguments:
     filename -- name of mesh file.
     var -- variable that needs to be extracted from the mesh file.
-           Currently only really works with NELEM, NPOIN, NDIME, or NMARK.
+           If nothing is specified, all data, except points and elements, is extracted
     
     Return value:
     N -- value of var from the mesh file specified by filename. 
+    or 
+    data -- dictionary that contains all the mesh data organized as: 
+
+    data =  {   NDIME = ...,
+                NELEM = ...,
+                NPOIN = ...,
+                NMARK = ...,
+                MARKERS= { marker_name0 : marker_elem0,
+                           marker_name1 : marker_elem1,
+                           .
+                           .
+                        marker_nameN : marker_elemN}
+            }
     
     Author: Jayant Mukhopadhaya
     Last updated: 08/12/2020"""
-    
+    keywords = ['NELEM', 'NPOIN','NDIME','NMARK','MARKER_TAG']
     N = 0
+    data = {}
     with open(filename) as fp:
-    
         # Read file line by line so that we can exit before reading the whole file
         line = fp.readline()
-        while line:
-            if line.split("=")[0] == var:
-                split_text = line.split("=")
-                N = int(split_text[-1].strip())
-                break
-            line=fp.readline()
 
-    return N
+        # Reading all data from the mesh file
+        if not var:
+            while line:
+                # If comment or not a named property, skip
+                if line[0] == '%' or not '=' in line:
+                    line=fp.readline()
+                    continue
+                split_text = line.split("=")
+                word = split_text[0].strip()
+
+                # Ensure word is in list of keywords
+                if word in keywords:
+                    # if not marker information, save info directly in dict
+                    if not 'MARKER' in word:
+                        data[word] = int(split_text[-1].strip())
+                    # if marker information...
+                    else:
+                        # initialize marker data in dict
+                        if not 'MARKERS' in data.keys():
+                            data['MARKERS'] = {}
+                        # add tag and elem data
+                        if 'TAG' in word:
+                            tag = split_text[-1].strip()
+                            # elem data associated with current tag
+                            while not 'MARKER_ELEMS' in line:
+                                line = fp.readline()
+                            split_text = line.split("=")
+                            elems = int(split_text[-1].strip())
+                            data['MARKERS'][tag] = elems
+
+                line=fp.readline()
+            return data
+
+        # Reading only specified value 
+        else:
+            while line:
+                # If comment or not a named property, skip
+                if line[0] == '%' or not '=' in line:
+                    line=fp.readline()
+                    continue
+                # If chosen variable, save value and break loop
+                if line.split("=")[0] == var:
+                    split_text = line.split("=")
+                    N = int(split_text[-1].strip())
+                    break
+                line=fp.readline()
+
+    if not var:
+        return data
+    else:
+        return N
 
 def get_force_data(filename = 'forces_breakdown.dat'):
     """Goes through force breakdown file to extract component force coefficient data
@@ -190,7 +327,8 @@ def tecplot_reader(filename=''):
             
             # If its a list of variables, read the list
             elif "variable" in line.lower():
-                line = line.split('=',1)[1]
+                if '\\' in line:
+                    line = f.readline()
                 variables = [ var.strip().strip("\"") for var in line.split(",")]
                 continue
             

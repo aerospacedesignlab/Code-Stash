@@ -327,15 +327,16 @@ def tecplot_reader(filename=''):
             
             # If its a list of variables, read the list
             elif "variable" in line.lower():
+                line = line.split('=',1)[1]
                 if '\\' in line:
-                    line = f.readline()
+                    line = lines[idx+1]
                 variables = [ var.strip().strip("\"") for var in line.split(",")]
                 continue
             
             # Check to see if there is a new zone definition
             elif "zone" in line.lower():
                 # extract zone name
-                zone_name = line.split("=")[1].strip()
+                zone_name = line.split("=",1)[1].strip()
                 zone_name = zone_name.strip("\"")
                 data[zone_name] = {}
                 
@@ -347,6 +348,8 @@ def tecplot_reader(filename=''):
             
             # Sort data out into the different variables
             else:
+                if '"' in line:
+                    continue
                 # if there is no zone defined, create a dummy zone named ZONE0
                 if not 'zone_name' in locals():
                     zone_name = 'ZONE0'

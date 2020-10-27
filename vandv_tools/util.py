@@ -29,6 +29,11 @@ def get_mesh_family_data(meshes, var = 'NPOIN'):
     return mesh_data
 
 def calculate_uplus_yplus(y,rho,vel_u,mu):
+    inds = np.argsort(y)
+    y = y[inds]
+    rho= rho[inds]
+    vel_u = vel_u[inds]
+    mu = mu[inds]
     nu = np.divide(mu,rho)
     tau_wall = mu[0] * (vel_u[1] - vel_u[0])/(y[1] - y[0])
     utau = np.sqrt(tau_wall/rho[0])

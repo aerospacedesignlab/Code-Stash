@@ -9,7 +9,20 @@ class PVWrapper:
         self.variables = self.reader.PointArrayStatus
         self.data = servermanager.Fetch(self.reader)
 
+    def extract_all(self):
+        """Extract all variables at location specified
+        Keyword arguments:
+        loc -- tuple containing the (x,y,z) coordinates of location 
+               (default (0.0,0.0,0.0))
+        eps -- tolerance for coordinate comparison (default 1e-5)
 
+        Return value: 
+        Dictionary where the keys are variable names and the values are
+        the value of that variable at location specified by loc
+
+        """
+        nP = self.data.GetNumberOfPoints()                
+        return self.extract_variables_at_index(idx=[i for i in range(nP)])
 
     def extract_variables_at_loc(self,loc=(0.0,0.0,0.0), eps=1e-5):
         """Extract all variables at location specified

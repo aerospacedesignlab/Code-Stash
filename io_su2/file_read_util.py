@@ -183,26 +183,18 @@ def get_force_data(filename = 'forces_breakdown.dat'):
     with open(filename) as fp:
         line = fp.readline()
         while line:
-            if line.split(":")[0] == 'Total CL':
+            if "Total" in line.split(":")[0]:
+                coeff = line.split(":")[0].split("Total ")[1]
                 split_text = line.split("|")
                 for chunk in split_text:
-                    if "Total CL" in chunk:
-                        force_dict['C_L'] = float(chunk.strip().split()[-1])
+                    if "Total" in chunk:
+                        force_dict[coeff] = float(chunk.strip().split()[-1])
                     elif "Pressure" in chunk:
-                        force_dict['C_Lp'] = float(chunk.strip().split()[-1])
+                        force_dict[coeff + 'p'] = float(chunk.strip().split()[-1])
                     elif "Friction" in chunk:
-                        force_dict['C_Lv'] = float(chunk.strip().split()[-1])
-
-            if line.split(":")[0] == 'Total CD':
-                split_text = line.split("|")
-                for chunk in split_text:
-                    if "Total CD" in chunk:
-                        force_dict['C_D'] = float(chunk.strip().split()[-1])
-                    elif "Pressure" in chunk:
-                        force_dict['C_Dp'] = float(chunk.strip().split()[-1])
-                    elif "Friction" in chunk:
-                        force_dict['C_Dv'] = float(chunk.strip().split()[-1])
-                break
+                        force_dict[coeff + 'v'] = float(chunk.strip().split()[-1])
+                if 'CFy' in line:
+                    break
             line=fp.readline()
 
     return force_dict

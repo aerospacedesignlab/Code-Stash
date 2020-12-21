@@ -199,6 +199,35 @@ def get_force_data(filename = 'forces_breakdown.dat'):
 
     return force_dict
 
+def get_performance_data(filename = 'performance_data.dat'):
+    """Returns performance metrics as a dictionary
+    
+    Keyword arguments:
+    filename -- Name of performance data file. This needs to be created 
+                from the output log. Usually it is the last 25 lines of 
+                the output log.
+    
+    Return value:
+    perf_dict -- Dictionary containing performance data 
+    
+    Author: Jayant Mukhopadhaya
+    Last updated: 21/12/2020"""
+
+    perf_dict = {}
+    with open(filename) as fp:
+        line = fp.readline()
+        while line:
+            if "|" in line:
+                split_text = line.split("|")
+                for chunk in split_text:
+                    if not chunk.strip():
+                        continue
+                    var = chunk.split(":")[0].strip()
+                    perf_dict[var] = float(chunk.strip().split()[-1])
+                    
+            line=fp.readline()
+    return perf_dict
+
 def read_history_data(filename=''):
     """Goes through a provided SU2 history file and sorts data into a dictionary
     
@@ -218,10 +247,10 @@ def read_history_data(filename=''):
     
     # if tecplot file, use tecplot reader
     if file_extension == ".dat":
-        data = tecplot_reader(filename)
+        data_dict = tecplot_history_reader(filename)
         
         # for the history data, return dictionary corresponding to the first zone
-        data_dict = list(data.values())[0]
+        # data_dict = list(data.values())[0]
         return data_dict
     
     # if csv file, use csv reader
@@ -371,6 +400,51 @@ def tecplot_reader(filename=''):
                                 data[zone_name]['var'+str(j)] = np.empty(0)
                         data[zone_name]['var'+str(i)] = np.append(data[zone_name]['var'+str(i)],float(val))
     return data
+
+def tecplot_history_reader(filename=''):
+    """ASCII Tecplot reader for multiple zones. Only deals with tabular data.
+    Handles tecplot files with multiple zones of tabular data.
+    
+    Keyword arguments:
+    filename -- Name of tecplot file.
+    
+    Return value:
+    data -- Dictionary containing extracted data. Organized as:
+    data =  {{ ZONE_NAME_0 : 
+                { VAR0 : numpy array containing data VAR0 data for ZONE0},
+                { VAR1 : ...},
+                {...}, 
+                { VARN : ...}},
+             .
+             .
+             .
+             { ZONE_NAME_N : 
+                { VAR0 : numpy array containing data VAR0 data for ZONE1},
+                { VAR1 : ...},
+                {...}, 
+                { VARN : ...}}}
+    
+    Useful to read V&V files from the NASA TMR website.
+    
+    Author: Jayant Mukhopadhaya
+    Last updated: 08/12/2020"""
+    
+    assert filename, "Please pass filename as an argument to the function"
+
+    data_dict = {}
+    with open(filename, 'r') as a:
+        variables = []
+        line = a.readline()
+        line = a.readline()
+        variables = [ var.strip().strip("\"") for var in line.split(",")]
+    # load data into a numpy array
+    hist_data = np.loadtxt(filename, delimiter=',',skiprows=2, unpack=True)
+    
+    # organize the dictionary
+    for i,variable in enumerate(variables):
+        data_dict[variable] = hist_data[i]
+    
+    return data_dict
 
 def read_constraints(filename='config.cfg'):
     """Goes through a provided SU2 configuration file and extracts constraint data

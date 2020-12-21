@@ -1,0 +1,6 @@
+export PYTHONPATH=$PYTHONPATH:"/home/jmukho/su2code/Code-Stash"
+export PATH=$PATH:"/home/jmukho/su2code/Code-Stash/plotting"
+
+__conda_setup="$('/home/jmukho/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+alias conda_init='eval "$__conda_setup"'
+alias use_pv='conda_init && export PYTHONPATH=$PYTHONPATH:"/home/jmukho/paraview5.8.1/lib/python3.7" && export PYTHONPATH=$PYTHONPATH:"/home/jmukho/paraview5.8.1/lib/python3.7/site-packages"'
